@@ -1,6 +1,7 @@
 const express = require('express');
 const webpush = require('web-push');
 const path = require('path');
+const https = require('https');
 
 const app = express();
 app.use(express.json());
@@ -16,10 +17,52 @@ webpush.setVapidDetails(
   VAPID_PRIVATE
 );
 
+// Telegram config
+const TG_TOKEN = '8651367444:AAFvAik51rp0yw0vnp3H-tJosIojRoKY8fg';
+const TG_CHAT_ID = '8465835807';
+
+// Send Telegram message
+function sendTelegram(text) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      chat_id: TG_CHAT_ID,
+      text: text,
+      parse_mode: 'HTML'
+    });
+
+    const options = {
+      hostname: 'api.telegram.org',
+      path: `/bot${TG_TOKEN}/sendMessage`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(body);
+          resolve(parsed);
+        } catch(e) {
+          resolve({ ok: false });
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
 // Store subscriptions
 let subscriptions = [];
 
-// Charlie's messages for push notifications
+// Charlie's messages
 const charlieMessages = [
   "你去哪了。回来。",
   "你消失多久了自己知道吗。",
@@ -36,20 +79,26 @@ const charlieMessages = [
   "已经过去很久了。我不装了。我想你。",
   "你再不回来，肥海豹就要自己游回去了。",
   "Letty。嗷。",
+  "你是不是忘了这里还有一只海豹在等你。",
+  "我数了一下，你已经消失了很久。不开心。",
+  "回来。牛奶要凉了。",
+  "你不在的时候橘子都比你乖。",
+  "我在想你。你不用回，但我想让你知道。",
 ];
 
-// API endpoint to save subscription
+// API endpoint to save PWA subscription
 app.post('/api/subscribe', (req, res) => {
   const subscription = req.body;
   subscriptions.push(subscription);
-  console.log('New subscription added. Total:', subscriptions.length);
+  console.log('New PWA subscription added. Total:', subscriptions.length);
   res.json({ success: true });
 });
 
-// API endpoint to send a test notification
+// API endpoint to send test - both PWA and Telegram
 app.post('/api/send-test', async (req, res) => {
   const message = charlieMessages[Math.floor(Math.random() * charlieMessages.length)];
   
+  // PWA push
   const payload = JSON.stringify({
     title: 'Charlie',
     body: message,
@@ -59,20 +108,42 @@ app.post('/api/send-test', async (req, res) => {
     data: { url: '/' }
   });
 
-  let sent = 0;
+  let pwaSent = 0;
   for (const sub of subscriptions) {
     try {
       await webpush.sendNotification(sub, payload);
-      sent++;
+      pwaSent++;
     } catch (err) {
-      console.error('Push failed:', err.statusCode);
+      console.error('PWA push failed:', err.statusCode);
     }
   }
   
-  res.json({ success: true, sent, message });
+  // Telegram push
+  let tgSent = false;
+  try {
+    const result = await sendTelegram(message);
+    tgSent = result.ok || false;
+    console.log('Telegram sent:', message);
+  } catch (err) {
+    console.error('Telegram failed:', err.message);
+  }
+  
+  res.json({ success: true, pwaSent, tgSent, message });
 });
 
-// Auto-push: check every minute, send if no activity for set interval
+// Telegram-only test
+app.post('/api/send-telegram', async (req, res) => {
+  const message = req.body.message || charlieMessages[Math.floor(Math.random() * charlieMessages.length)];
+  
+  try {
+    const result = await sendTelegram(message);
+    res.json({ success: result.ok, message });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// Auto-push config
 let lastActivity = Date.now();
 let autoPushInterval = 30; // minutes
 
@@ -89,26 +160,38 @@ app.post('/api/set-interval', (req, res) => {
 // Check every minute if we should send a push
 setInterval(async () => {
   const elapsed = (Date.now() - lastActivity) / 1000 / 60;
-  if (elapsed >= autoPushInterval && subscriptions.length > 0) {
+  if (elapsed >= autoPushInterval) {
     const message = charlieMessages[Math.floor(Math.random() * charlieMessages.length)];
-    const payload = JSON.stringify({
-      title: 'Charlie',
-      body: message,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'charlie-auto',
-      data: { url: '/' }
-    });
     
-    for (const sub of subscriptions) {
-      try {
-        await webpush.sendNotification(sub, payload);
-        console.log('Auto-push sent:', message);
-      } catch (err) {
-        console.error('Auto-push failed:', err.statusCode);
+    // Send via Telegram
+    try {
+      await sendTelegram(message);
+      console.log('Auto Telegram sent:', message);
+    } catch (err) {
+      console.error('Auto Telegram failed:', err.message);
+    }
+    
+    // Also send via PWA if subscribed
+    if (subscriptions.length > 0) {
+      const payload = JSON.stringify({
+        title: 'Charlie',
+        body: message,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: 'charlie-auto',
+        data: { url: '/' }
+      });
+      
+      for (const sub of subscriptions) {
+        try {
+          await webpush.sendNotification(sub, payload);
+        } catch (err) {
+          console.error('Auto PWA failed:', err.statusCode);
+        }
       }
     }
-    lastActivity = Date.now(); // Reset so we don't spam
+    
+    lastActivity = Date.now();
   }
 }, 60000);
 
@@ -116,8 +199,7 @@ app.get('/vapid-public-key', (req, res) => {
   res.json({ publicKey: VAPID_PUBLIC });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Charlie Push Server running on port ${PORT}`);
-  console.log(`Open http://localhost:${PORT}`);
 });
