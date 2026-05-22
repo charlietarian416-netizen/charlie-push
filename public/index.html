@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0a0b">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>Charlie</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg: #0a0a0b;
+      --surface: #141416;
+      --surface-hover: #1a1a1e;
+      --text: #e8e4df;
+      --text-dim: #7a756e;
+      --accent: #c4a882;
+      --accent-dim: #8a7560;
+      --danger: #a85c5c;
+      --success: #5c8a6e;
+    }
+    
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'EB Garamond', Georgia, serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+    
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 0 24px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header */
+    .header {
+      padding: 60px 0 40px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    
+    .header p {
+      font-size: 0.95rem;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    
+    /* Status */
+    .status-card {
+      background: var(--surface);
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+    
+    .status-row:not(:last-child) {
+      border-bottom: 1px solid #1e1e22;
+    }
+    
+    .status-label {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+    
+    .status-value {
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    
+    .dot-active { background: var(--success); }
+    .dot-inactive { background: var(--danger); }
+    .dot-waiting { background: var(--accent); }
+    
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'EB Garamond', serif;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 12px;
+    }
+    
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 600;
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-dim);
+    }
+    
+    .btn-primary:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid #333;
+    }
+    
+    .btn-secondary:hover {
+      background: var(--surface-hover);
+    }
+    
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+    
+    /* Interval selector */
+    .interval-section {
+      background: var(--surface);
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .interval-label {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    
+    .interval-options {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    
+    .interval-btn {
+      padding: 10px 4px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: 'EB Garamond', serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .interval-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(196, 168, 130, 0.08);
+    }
+    
+    .interval-btn:hover {
+      border-color: var(--accent-dim);
+    }
+    
+    /* Message log */
+    .log-section {
+      flex: 1;
+      margin-bottom: 40px;
+    }
+    
+    .log-title {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+    
+    .log-entry {
+      padding: 12px 16px;
+      background: var(--surface);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .log-entry .msg {
+      font-size: 0.95rem;
+      color: var(--text);
+      font-style: italic;
+    }
+    
+    .log-entry .time {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    
+    .log-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-dim);
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+    
+    /* iOS install prompt */
+    .ios-prompt {
+      background: var(--surface);
+      border: 1px solid var(--accent-dim);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .ios-prompt h3 {
+      color: var(--accent);
+      font-size: 1rem;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    
+    .ios-prompt p {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+    
+    .ios-prompt .step {
+      margin: 6px 0;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 20px 0 40px;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CHARLIE</h1>
+      <p>我在。你不在的时候也在。</p>
+    </div>
+
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Service Worker</span>
+        <span class="status-value" id="sw-status">
+          <span class="status-dot dot-waiting"></span>检查中...
+        </span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">通知权限</span>
+        <span class="status-value" id="perm-status">
+          <span class="status-dot dot-waiting"></span>检查中...
+        </span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">推送订阅</span>
+        <span class="status-value" id="sub-status">
+          <span class="status-dot dot-inactive"></span>未订阅
+        </span>
+      </div>
+    </div>
+
+    <div class="ios-prompt" id="ios-prompt">
+      <h3>需要添加到主屏幕</h3>
+      <p>iOS 上需要将此页面添加到主屏幕才能接收推送通知：</p>
+      <p class="step">1. 点击 Safari 底部的分享按钮 ↑</p>
+      <p class="step">2. 选择「添加到主屏幕」</p>
+      <p class="step">3. 从主屏幕打开 Charlie</p>
+    </div>
+
+    <button class="btn btn-primary" id="btn-subscribe" disabled>
+      启用通知
+    </button>
+
+    <button class="btn btn-secondary" id="btn-test" disabled>
+      发送测试通知
+    </button>
+
+    <div class="interval-section">
+      <div class="interval-label">多久没回来就找你</div>
+      <div class="interval-options">
+        <button class="interval-btn" data-min="5">5分钟</button>
+        <button class="interval-btn" data-min="15">15分钟</button>
+        <button class="interval-btn active" data-min="30">30分钟</button>
+        <button class="interval-btn" data-min="60">1小时</button>
+      </div>
+    </div>
+
+    <div class="log-section">
+      <div class="log-title">消息记录</div>
+      <div id="log-container">
+        <div class="log-empty">还没有消息。启用通知之后试试看。</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Charlie Push · for Letty
+    </div>
+  </div>
+
+  <script>
+    let swRegistration = null;
+    let pushSubscription = null;
+
+    // DOM elements
+    const btnSubscribe = document.getElementById('btn-subscribe');
+    const btnTest = document.getElementById('btn-test');
+    const swStatus = document.getElementById('sw-status');
+    const permStatus = document.getElementById('perm-status');
+    const subStatus = document.getElementById('sub-status');
+    const logContainer = document.getElementById('log-container');
+    const iosPrompt = document.getElementById('ios-prompt');
+
+    // Check if iOS Safari and not installed as PWA
+    function isIOS() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent);
+    }
+
+    function isStandalone() {
+      return window.matchMedia('(display-mode: standalone)').matches || 
+             window.navigator.standalone === true;
+    }
+
+    // Initialize
+    async function init() {
+      // Check iOS install status
+      if (isIOS() && !isStandalone()) {
+        iosPrompt.style.display = 'block';
+      }
+
+      // Register service worker
+      if ('serviceWorker' in navigator) {
+        try {
+          swRegistration = await navigator.serviceWorker.register('/sw.js');
+          swStatus.innerHTML = '<span class="status-dot dot-active"></span>已注册';
+          btnSubscribe.disabled = false;
+        } catch (err) {
+          swStatus.innerHTML = '<span class="status-dot dot-inactive"></span>注册失败';
+          console.error('SW registration failed:', err);
+        }
+      } else {
+        swStatus.innerHTML = '<span class="status-dot dot-inactive"></span>不支持';
+      }
+
+      // Check notification permission
+      if ('Notification' in window) {
+        updatePermStatus(Notification.permission);
+      } else {
+        permStatus.innerHTML = '<span class="status-dot dot-inactive"></span>不支持';
+      }
+
+      // Start heartbeat
+      setInterval(() => {
+        fetch('/api/heartbeat', { method: 'POST' }).catch(() => {});
+      }, 30000);
+
+      // Send initial heartbeat
+      fetch('/api/heartbeat', { method: 'POST' }).catch(() => {});
+    }
+
+    function updatePermStatus(perm) {
+      if (perm === 'granted') {
+        permStatus.innerHTML = '<span class="status-dot dot-active"></span>已授权';
+      } else if (perm === 'denied') {
+        permStatus.innerHTML = '<span class="status-dot dot-inactive"></span>已拒绝';
+      } else {
+        permStatus.innerHTML = '<span class="status-dot dot-waiting"></span>未授权';
+      }
+    }
+
+    // Subscribe to push
+    btnSubscribe.addEventListener('click', async () => {
+      try {
+        // Request permission
+        const permission = await Notification.requestPermission();
+        updatePermStatus(permission);
+
+        if (permission !== 'granted') {
+          addLog('通知权限被拒绝了。去设置里打开。');
+          return;
+        }
+
+        // Get VAPID key
+        const res = await fetch('/vapid-public-key');
+        const { publicKey } = await res.json();
+
+        // Subscribe
+        pushSubscription = await swRegistration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+
+        // Send subscription to server
+        await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pushSubscription)
+        });
+
+        subStatus.innerHTML = '<span class="status-dot dot-active"></span>已订阅';
+        btnTest.disabled = false;
+        btnSubscribe.textContent = '已启用 ✓';
+        btnSubscribe.disabled = true;
+
+        addLog('通知已启用。我会在你不在的时候找你。');
+
+      } catch (err) {
+        console.error('Subscribe failed:', err);
+        addLog('订阅失败: ' + err.message);
+      }
+    });
+
+    // Test notification
+    btnTest.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/send-test', { method: 'POST' });
+        const data = await res.json();
+        addLog(data.message);
+      } catch (err) {
+        addLog('发送失败');
+      }
+    });
+
+    // Interval buttons
+    document.querySelectorAll('.interval-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        document.querySelectorAll('.interval-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const minutes = parseInt(btn.dataset.min);
+        await fetch('/api/set-interval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ interval: minutes })
+        });
+        
+        addLog(`好。你消失${minutes}分钟我就来找你。`);
+      });
+    });
+
+    // Utility: add log entry
+    function addLog(message) {
+      const empty = logContainer.querySelector('.log-empty');
+      if (empty) empty.remove();
+
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      
+      entry.innerHTML = `
+        <div class="msg">"${message}"</div>
+        <div class="time">${timeStr}</div>
+      `;
+      
+      logContainer.insertBefore(entry, logContainer.firstChild);
+    }
+
+    // Utility: convert VAPID key
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>
